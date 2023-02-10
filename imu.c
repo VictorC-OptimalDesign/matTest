@@ -181,7 +181,8 @@ uint16_t bufferUsed( uint16_t head, uint16_t tail) {
 
 void saveBufferToFlash( debugData_t debugData ) {
 
-    uint8_t __attribute__ ((aligned (4))) blockBuffer[256];
+    static uint16_t const BlockBufferSize = 256u;
+    uint8_t __attribute__ ((aligned (4))) blockBuffer[BlockBufferSize];
     uint16_t partF = 0;
 
     // drop data to make 32bit aligned
@@ -217,11 +218,11 @@ void saveBufferToFlash( debugData_t debugData ) {
     } else {
 
         uint16_t firstSize = size - (rawShotBufferTailPoint*7);
-        uint16_t partA = firstSize % 256;
+        uint16_t partA = firstSize % BlockBufferSize;
         uint16_t partB = 0;
         uint16_t endSize = size - firstSize;
         if (partA != 0) {
-            partB = 256 - partA - partF;
+            partB = BlockBufferSize - partA - partF;
             NRF_LOG_INFO("Make partB %d", partB);
             firstSize = firstSize - partA;
             endSize -= partB;
@@ -237,11 +238,11 @@ void saveBufferToFlash( debugData_t debugData ) {
         if (partA != 0) {
             NRF_LOG_INFO("split Flash 2 write faddr=%08X baddrA=%08X lenA=%04X baddrB=%08X lenB=%04X",
                 startFlashBufferPointer+firstSize, ((int8_t *) &rawShotBuffer[rawShotBufferTailPoint])+firstSize, partA, rawShotBuffer, partB);
-            qflash_write_blocking(blockBuffer, 256, startFlashBufferPointer+firstSize);
+            qflash_write_blocking(blockBuffer, BlockBufferSize, startFlashBufferPointer+firstSize);
         }
         NRF_LOG_INFO("split Flash 3 write faddr=%08X baddr=%08X len=%04X",
-            startFlashBufferPointer+firstSize+256, rawShotBuffer + partB, endSize);
-        qflash_write_blocking(((uint8_t *) rawShotBuffer)+partB, endSize, startFlashBufferPointer+firstSize+256);
+            startFlashBufferPointer+firstSize+BlockBufferSize, rawShotBuffer + partB, endSize);
+        qflash_write_blocking(((uint8_t *) rawShotBuffer)+partB, endSize, startFlashBufferPointer+firstSize+BlockBufferSize);
     }
     flash_off();
 
