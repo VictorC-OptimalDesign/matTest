@@ -182,20 +182,46 @@ uint16_t bufferUsed( uint16_t head, uint16_t tail) {
 void saveBufferToFlash( debugData_t debugData ) {
 
     static uint16_t const BlockBufferSize = 256u;
+    static uint16_t const MinPartBSize = 4u;
     uint8_t __attribute__ ((aligned (4))) blockBuffer[BlockBufferSize];
-    uint16_t partF = 0;
 
     // drop data to make 32bit aligned
     while (((uint32_t) &rawShotBuffer[rawShotBufferTailPoint][0] % 4) != 0) {
         NRF_LOG_INFO("dump 7 bytes to 32bit align tail was = %08X", &rawShotBuffer[rawShotBufferTailPoint][0]);
         rawShotBufferTailPoint += 1;
-        partF += 7;
+        //partF += 7;
     }
+
     NRF_LOG_INFO("tail now = %08X", &rawShotBuffer[rawShotBufferTailPoint][0]);
 
     uint16_t size = bufferUsed( rawShotBufferHeadPoint, rawShotBufferTailPoint);
     NRF_LOG_INFO("Save Buffer head=%04X tail=%04X size=%04X",
         rawShotBufferHeadPoint, rawShotBufferTailPoint, size);
+
+    uint16_t firstSize = size - (rawShotBufferTailPoint*7);
+    uint16_t partA = firstSize % BlockBufferSize;
+    uint16_t partB = 0u;
+    uint16_t partF = 0u;
+    if (partA > 0u)
+    {
+        partF = BlockBufferSize - partA;
+        partF = 7 * (partF / 7);
+        partB = BlockBufferSize - partA - partF;
+        while ((partB % MinPartBSize) != 0)
+        {
+            rawShotBufferTailPoint += MinPartBSize;
+            size = bufferUsed( rawShotBufferHeadPoint, rawShotBufferTailPoint);
+            firstSize = size - (rawShotBufferTailPoint*7);
+            partA = firstSize % BlockBufferSize;
+            partF = BlockBufferSize - partA;
+            partF = 7 * (partF / 7);
+            partB = BlockBufferSize - partA - partF;
+        }
+    }
+    uint16_t endSize = size - firstSize;
+    printf("head = %d, tail = %d, size = %d, firstSize = %d, endSize = %d, partA = %d, partB = %d, partF = %d\n",
+    rawShotBufferHeadPoint, rawShotBufferTailPoint,
+        size, firstSize, endSize, partA, partB, partF);
 
     // shift "5 bit imu tag" down 3 bits for mobile
     for (uint16_t i=0;i<MAX_RAW_SHOT_BUFFER;i++) {
@@ -217,17 +243,17 @@ void saveBufferToFlash( debugData_t debugData ) {
         NRF_LOG_INFO("Flash write addr=%08X len=%04X", startFlashBufferPointer, size);
     } else {
 
-        uint16_t firstSize = size - (rawShotBufferTailPoint*7);
-        uint16_t partA = firstSize % BlockBufferSize;
-        uint16_t partB = 0;
-        uint16_t endSize = size - firstSize;
+        // uint16_t firstSize = size - (rawShotBufferTailPoint*7);
+        // uint16_t partA = firstSize % BlockBufferSize;
+        // uint16_t partB = 0;
+        // uint16_t endSize = size - firstSize;
         if (partA != 0) {
-            partB = BlockBufferSize - partA - partF;
-            NRF_LOG_INFO("Make partB %d", partB);
-            firstSize = firstSize - partA;
-            endSize -= partB;
-            printf("size = %d, firstSize = %d, endSize = %d, partA = %d, partB = %d, partF = %d\n",
-                size, firstSize, endSize, partA, partB, partF);
+            // partB = BlockBufferSize - partA - partF;
+            // NRF_LOG_INFO("Make partB %d", partB);
+            // firstSize = firstSize - partA;
+            // endSize -= partB;
+            // printf("size = %d, firstSize = %d, endSize = %d, partA = %d, partB = %d, partF = %d\n",
+            //     size, firstSize, endSize, partA, partB, partF);
             memcpy( blockBuffer, ((uint8_t *) &rawShotBuffer[rawShotBufferTailPoint])+firstSize, partA );
             memset( &blockBuffer[partA], 0xff, partF);
             memcpy( &blockBuffer[partA+partF], rawShotBuffer, partB);
