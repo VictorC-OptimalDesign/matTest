@@ -110,6 +110,11 @@ static void testImu(int argc, char* argv[])
     }
     else
     {
+        printf("\n%s(%d,[", __func__, argc);
+        for (int i = 0; i < argc; ++i)
+            printf("%s,", argv[i]);
+        printf("])\n");
+        
         printHeader();
         //uint16_t bufferSize = getImuSaveBufferSize();
         uint16_t bufferSize = 100u;
@@ -146,10 +151,5 @@ static void testException(void)
 
 int main(int argc, char* argv[])
 {
-    printf("\n%s(%d,[", __func__, argc);
-    for (int i = 0; i < argc; ++i)
-        printf("%s,", argv[i]);
-    printf("])\n");
-
     testImu(argc, argv);
 }
