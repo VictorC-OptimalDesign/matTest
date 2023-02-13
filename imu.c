@@ -2,8 +2,6 @@
 
 #include <math.h>
 #include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,13 +11,14 @@
 
 // === DEFINES =================================================================
 
-//#define NRF_LOG_INFO                    printf
+#define NRF_LOG_INFO(f, ...)
 
 typedef uint32_t nrfx_err_t;
 
 
 // === PRIVATE FUNCTIONS =======================================================
 
+#if false
 static void NRF_LOG_INFO(char const* format, ...)
 {
     va_list args;
@@ -28,6 +27,7 @@ static void NRF_LOG_INFO(char const* format, ...)
     printf("\n");
     va_end(args);
 }
+#endif
 
 // === clock.c =================================================================
 
@@ -139,6 +139,28 @@ bool rawShotBufferRollingFlag = false;
 
 uint32_t startTime = 0;
 
+static imuArgs_t g_args =
+{
+    .rollover = false,
+    .head = 0u,
+    .tail = 0u
+};
+
+static imuSaveResult_t g_result =
+{
+    .head = 0u,
+    .tail = 0u,
+    .size = 0u,
+    .firstSize = 0u,
+    .endSize = 0u,
+    .blockSizes =
+    {
+        .a = 0u,
+        .f = 0u,
+        .b = 0u
+    }
+};
+
 
 void setBufferEmpty( void )
 {
@@ -247,8 +269,16 @@ void saveBufferToFlash( debugData_t debugData ) {
         NRF_LOG_INFO("split Flash 3 write faddr=%08X baddr=%08X len=%04X",
             startFlashBufferPointer+firstSize+256, rawShotBuffer + partB, endSize);
         qflash_write_blocking(((uint8_t *) rawShotBuffer)+partB, endSize, startFlashBufferPointer+firstSize+256);
+        g_result.firstSize = firstSize;
+        g_result.endSize = endSize;
+        g_result.blockSizes.a = partA;
+        g_result.blockSizes.f = partF;
+        g_result.blockSizes.b = partB;
     }
     flash_off();
+    g_result.head = rawShotBufferHeadPoint;
+    g_result.tail = rawShotBufferTailPoint;
+    g_result.size = size;
 
     // update shot count, display count, and meta data
     uint32_t shotCount = getShotCount()+1;
@@ -307,12 +337,34 @@ void newUpdateRingBufferPointers( uint16_t bytesWritten ) {
 }
 
 
-void setDataPointers(uint16_t head, uint16_t tail)
+void setDataPointers(imuArgs_t const args)
 {
-    rawShotBufferHeadPoint = head;
-    rawShotBufferTailPoint = tail;
+    g_args = args;
+    g_args.rollover = args.tail >= args.head;
+
+    rawShotBufferRollingFlag = g_args.rollover;
+    rawShotBufferHeadPoint = g_args.head;
+    rawShotBufferTailPoint = g_args.tail;
     rawShotBufferEmptyFlag = false;
-    if (head == tail)
-        rawShotBufferRollingFlag = true;
-    printf("head = %04x  tail = %04x\n", rawShotBufferHeadPoint, rawShotBufferTailPoint);
+
+    g_result.head = g_args.head;
+    g_result.tail = g_args.tail;
+    g_result.size = 0u;
+    g_result.firstSize = 0u;
+    g_result.endSize = 0u;
+    g_result.blockSizes.a = 0u;
+    g_result.blockSizes.f = 0u;
+    g_result.blockSizes.b = 0u;
+}
+
+
+imuSaveResult_t getImuSaveResult(void)
+{
+    return g_result;
+}
+
+
+uint16_t getImuSaveBufferSize(void)
+{
+    return sizeof(rawShotBuffer);
 }
