@@ -10,26 +10,34 @@
 #include "imu.h"
 
 
-// === TYPE DEFINES ============================================================
+// === DEFINES =================================================================
+
+#define ENABLE_HARD_CODED_ARGS          (false)
 
 
+
+// === GLOAL CONSTANTS =========================================================
+
+static imuArgs_t const HardCodedArgs =
+{
+    .valid = true,
+    .rollover = true,
+    .head = 0x0a15,
+    .tail = 0x0a15,
+};
 
 
 // === PRIVATE FUNCTIONS =======================================================
 
 static imuArgs_t processMovingAverageArgs(int argc, char* argv[])
 {
-#if false
+#if ENABLE_HARD_CODED_ARGS
     // Hardcoded default args.
-    imuArgs_t args =
-    {
-        .rollover = true,
-        .head = 0x0a15,
-        .tail = 0x0a15,
-    };
+    imuArgs_t args = HardCodedArgs;
 #else
     imuArgs_t args =
     {
+        .valid = false,
         .rollover = false,
         .head = 0u,
         .tail = 0u,
@@ -37,13 +45,14 @@ static imuArgs_t processMovingAverageArgs(int argc, char* argv[])
 
     if ((argc > 1) && (argv != NULL))
     {
+        args.valid = true;
         for (int i = 1; i < argc; ++i)
         {
             int value = strtol(argv[i], (char**)NULL, 10);
             switch (i)
             {
                 case 1:
-                    if (value > 0)
+                    if (value >= 0)
                     {
                         args.head = value;
                         args.tail = value;
@@ -51,7 +60,7 @@ static imuArgs_t processMovingAverageArgs(int argc, char* argv[])
                     }
                     break;
                 case 2:
-                    if (value > 0)
+                    if (value >= 0)
                         args.tail = value;
                     break;
                 case 3:
@@ -98,9 +107,11 @@ static void printImuSaveResult( imuSaveResult_t const result)
 
 static void testImu(int argc, char* argv[])
 {
-    if (argc > 1)
+    imuArgs_t args = processMovingAverageArgs(argc, argv);
+
+    if (args.valid)
     {
-        imuArgs_t args = processMovingAverageArgs(argc, argv);
+        
         printImuArgs(args);
         setDataPointers(args);
         debugData_t debugData;
@@ -117,8 +128,7 @@ static void testImu(int argc, char* argv[])
         printf("])\n");
         
         printHeader();
-        //uint16_t bufferSize = getImuSaveBufferSize();
-        uint16_t bufferSize = 10u;
+        uint16_t bufferSize = getImuQueueSize();
         for (uint16_t tail = 0; tail < bufferSize; ++tail)
         {
             for (uint16_t head = 0; head < bufferSize; ++head)

@@ -13,6 +13,7 @@ typedef uint32_t debugData_t[16];
 
 typedef struct imuArgs_t
 {
+    bool valid;
     bool rollover;
     uint16_t head;
     uint16_t tail;
@@ -44,6 +45,7 @@ void newUpdateRingBufferPointers( uint16_t bytesWritten );
 void setDataPointers(imuArgs_t const args);
 imuSaveResult_t getImuSaveResult(void);
 uint16_t getImuSaveBufferSize(void);
+uint16_t getImuQueueSize(void);
 
 
 #endif

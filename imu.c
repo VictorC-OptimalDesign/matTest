@@ -368,3 +368,9 @@ uint16_t getImuSaveBufferSize(void)
 {
     return sizeof(rawShotBuffer);
 }
+
+
+uint16_t getImuQueueSize(void)
+{
+    return MAX_RAW_SHOT_BUFFER;
+}
