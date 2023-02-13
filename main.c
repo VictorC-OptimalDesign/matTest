@@ -107,6 +107,7 @@ static void testImu(int argc, char* argv[])
         saveBufferToFlash(debugData);
         imuSaveResult_t result = getImuSaveResult();
         printImuSaveResult(result);
+        printf("\n");
     }
     else
     {
@@ -117,7 +118,7 @@ static void testImu(int argc, char* argv[])
         
         printHeader();
         //uint16_t bufferSize = getImuSaveBufferSize();
-        uint16_t bufferSize = 100u;
+        uint16_t bufferSize = 10u;
         for (uint16_t tail = 0; tail < bufferSize; ++tail)
         {
             for (uint16_t head = 0; head < bufferSize; ++head)
