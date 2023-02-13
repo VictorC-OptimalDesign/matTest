@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "exception.h"
 #include "imu.h"
 
 
@@ -18,7 +19,7 @@
 
 static imuArgs_t processMovingAverageArgs(int argc, char* argv[])
 {
-#if true
+#if false
     // Hardcoded default args.
     imuArgs_t args =
     {
@@ -38,7 +39,7 @@ static imuArgs_t processMovingAverageArgs(int argc, char* argv[])
     {
         for (int i = 1; i < argc; ++i)
         {
-            int value = strol(argv[i], (char**)NULL, 10);
+            int value = strtol(argv[i], (char**)NULL, 10);
             switch (i)
             {
                 case 1:
@@ -80,6 +81,66 @@ static void printImuData(imuArgs_t const args, imuSaveResult_t const result)
         );
 }
 
+static void printImuArgs(imuArgs_t const args)
+{
+    printf("%u, %u, %u, ",
+        args.head, args.tail, args.rollover
+        );
+}
+
+static void printImuSaveResult( imuSaveResult_t const result)
+{
+    printf("%u, %u, 0x%08x, 0x%08x, %u, %u, %u, %u, %u, %u, ",
+        result.head, result.tail, result.head * 7, result.tail * 7, result.size, result.firstSize, result.endSize,
+        result.blockSizes.a, result.blockSizes.f, result.blockSizes.b
+        );
+}
+
+static void testImu(int argc, char* argv[])
+{
+    if (argc > 1)
+    {
+        imuArgs_t args = processMovingAverageArgs(argc, argv);
+        printImuArgs(args);
+        setDataPointers(args);
+        debugData_t debugData;
+        saveBufferToFlash(debugData);
+        imuSaveResult_t result = getImuSaveResult();
+        printImuSaveResult(result);
+    }
+    else
+    {
+        printHeader();
+        //uint16_t bufferSize = getImuSaveBufferSize();
+        uint16_t bufferSize = 100u;
+        for (uint16_t tail = 0; tail < bufferSize; ++tail)
+        {
+            for (uint16_t head = 0; head < bufferSize; ++head)
+            {
+                imuArgs_t args =
+                {
+                    .rollover = tail >= head,
+                    .head = head,
+                    .tail = tail,
+                };
+                printImuArgs(args);
+                setDataPointers(args);
+                debugData_t debugData;
+                saveBufferToFlash(debugData);
+                imuSaveResult_t result = getImuSaveResult();
+                printImuSaveResult(result);
+                printf("\n");
+            }
+        }
+    }
+}
+
+static void testException(void)
+{
+    exceptionTest1();
+    exceptionTest2();
+}
+
 
 // === MAIN ====================================================================
 
@@ -90,40 +151,5 @@ int main(int argc, char* argv[])
         printf("%s,", argv[i]);
     printf("])\n");
 
-    if (argc > 1)
-    {
-        imuArgs_t args = processMovingAverageArgs(argc, argv);
-        setDataPointers(args);
-        debugData_t debugData;
-        saveBufferToFlash(debugData);
-        imuSaveResult_t result = getImuSaveResult();
-        printHeader();
-        printImuData(args, result);
-    }
-    else
-    {
-        printHeader();
-        uint16_t bufferSize = getImuSaveBufferSize();
-        for (uint16_t tail = 0; tail < bufferSize; ++tail)
-        {
-            for (uint16_t head = 0; head < bufferSize; ++head)
-            {
-                if (head > tail)
-                    continue;
-                imuArgs_t args =
-                {
-                    .rollover = tail >= head,
-                    .head = head,
-                    .tail = tail,
-                };
-                setDataPointers(args);
-                debugData_t debugData;
-                saveBufferToFlash(debugData);
-                imuSaveResult_t result = getImuSaveResult();
-                printImuData(args, result);
-            }
-        }
-
-    }
-    
+    testImu(argc, argv);
 }
